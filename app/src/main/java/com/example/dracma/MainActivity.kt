@@ -9,6 +9,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.dracma.ui.AvaliarPrestadorScreen
+import com.example.dracma.ui.MeusPedidosScreen
 import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.ConversasScreen
@@ -33,14 +35,17 @@ object Rotas {
     const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
     const val CHAT = "chat/{conversaId}"
     const val CONVERSAS = "conversas"
-
-    // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
-    fun perfilPrestador(id: Int) = "perfil_prestador/$id"
-    fun chat(conversaId: Int) = "chat/$conversaId"
+    const val MEUS_PEDIDOS = "meus_pedidos"
+    const val AVALIAR_PRESTADOR = "avaliar_prestador/{anuncioId}"
 
     // Telas 5 e 7
     const val SERVICOS_CATEGORIA = "servicos_categoria/{categoria}"
     const val CONTRATAR = "contratar/{anuncioId}"
+
+    // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
+    fun perfilPrestador(id: Int) = "perfil_prestador/$id"
+    fun chat(conversaId: Int) = "chat/$conversaId"
+    fun avaliarPrestador(anuncioId: Int) = "avaliar_prestador/$anuncioId"
     fun servicosCategoria(categoria: Categoria) = "servicos_categoria/${categoria.name}"
     fun contratar(anuncioId: Int) = "contratar/$anuncioId"
 }
@@ -101,7 +106,8 @@ fun DracmaApp() {
                     }
                 },
                 onCategoria = { categoria -> nav.navigate(Rotas.servicosCategoria(categoria)) },
-                onChat = { nav.navigate(Rotas.CONVERSAS) }
+                onChat = { nav.navigate(Rotas.CONVERSAS) },
+                onMeusPedidos = { nav.navigate(Rotas.MEUS_PEDIDOS) }
             )
         }
 
@@ -130,6 +136,7 @@ fun DracmaApp() {
                         nav.navigate(Rotas.chat(conversa.id))
                     }
                 },
+                // Agora usa a tela 7 de verdade (substitui o "contratar direto" temporário)
                 onContratar = { anuncioId -> nav.navigate(Rotas.contratar(anuncioId)) }
             )
         }
@@ -172,10 +179,35 @@ fun DracmaApp() {
                 ContratarServicoScreen(
                     anuncio = anuncio,
                     onVoltar = { nav.popBackStack() },
-                    // TODO: tela 8 - ir para "Meus pedidos" em vez de voltar
-                    onContratado = { nav.popBackStack() }
+                    // Depois de contratar, vai para "Meus pedidos" (a tela 8 já existe na main)
+                    onContratado = {
+                        nav.navigate(Rotas.MEUS_PEDIDOS) {
+                            popUpTo(Rotas.CONTRATAR) { inclusive = true }
+                        }
+                    }
                 )
             }
+        }
+
+        // Meus pedidos: serviços que o cliente contratou
+        composable(Rotas.MEUS_PEDIDOS) {
+            MeusPedidosScreen(
+                onVoltar = { nav.popBackStack() },
+                onAvaliar = { anuncioId -> nav.navigate(Rotas.avaliarPrestador(anuncioId)) }
+            )
+        }
+
+        // Avaliar prestador: recebe o id do anúncio contratado
+        composable(
+            route = Rotas.AVALIAR_PRESTADOR,
+            arguments = listOf(navArgument("anuncioId") { type = NavType.IntType })
+        ) { entrada ->
+            val anuncioId = entrada.arguments?.getInt("anuncioId") ?: 0
+            AvaliarPrestadorScreen(
+                anuncioId = anuncioId,
+                onVoltar = { nav.popBackStack() },
+                onConcluido = { nav.popBackStack() }
+            )
         }
     }
 }
