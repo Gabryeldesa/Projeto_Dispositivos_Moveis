@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Plumbing
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.ui.graphics.vector.ImageVector
 import model.Categoria
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 private val brasil: Locale = Locale.forLanguageTag("pt-BR")
@@ -23,6 +25,13 @@ fun formatarCoins(valor: Double): String {
 
 fun formatarNota(nota: Double): String {
     return String.format(brasil, "%.1f", nota)
+}
+
+// Hora da mensagem no chat, no formato 14:35.
+// Usamos SimpleDateFormat porque o java.time só funciona do Android 8 em diante
+// e o app aceita a partir do Android 7 (minSdk 24).
+fun formatarHora(instante: Long): String {
+    return SimpleDateFormat("HH:mm", brasil).format(Date(instante))
 }
 
 fun iconeDaCategoria(categoria: Categoria): ImageVector {

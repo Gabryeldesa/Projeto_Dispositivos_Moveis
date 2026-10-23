@@ -4,14 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.dracma.ui.CadastroClienteScreen
+import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
 import com.example.dracma.ui.DracmaTheme
 import com.example.dracma.ui.HomeProvisoria
 import com.example.dracma.ui.LoginScreen
+import com.example.dracma.ui.PerfilPrestadorScreen
 import data.Repositorio
 
 // Nomes das rotas em um só lugar (evita erro de digitação nas strings)
@@ -20,6 +24,14 @@ object Rotas {
     const val CADASTRO_CLIENTE = "cadastro_cliente"
     const val CADASTRO_PRESTADOR = "cadastro_prestador"
     const val HOME = "home"
+
+    // O {prestadorId} é um argumento: a rota muda conforme o prestador escolhido
+    const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
+    const val CHAT = "chat/{conversaId}"
+
+    // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
+    fun perfilPrestador(id: Int) = "perfil_prestador/$id"
+    fun chat(conversaId: Int) = "chat/$conversaId"
 }
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +81,43 @@ fun DracmaApp() {
             HomeProvisoria(
                 onSair = {
                     nav.navigate(Rotas.LOGIN) { popUpTo(Rotas.HOME) { inclusive = true } }
-                }
+                },
+                // Temporário: atalho para testar a tela de perfil enquanto a Home não existe
+                onAbrirPerfil = { id -> nav.navigate(Rotas.perfilPrestador(id)) }
+            )
+        }
+
+        // Tela 6 - Perfil do prestador
+        composable(
+            route = Rotas.PERFIL_PRESTADOR,
+            arguments = listOf(navArgument("prestadorId") { type = NavType.IntType })
+        ) { entrada ->
+            // Pega o id que veio dentro da rota
+            val prestadorId = entrada.arguments?.getInt("prestadorId") ?: 0
+            PerfilPrestadorScreen(
+                prestadorId = prestadorId,
+                onVoltar = { nav.popBackStack() },
+                onConversar = { id ->
+                    // Abre (ou reaproveita) a conversa com esse prestador e vai para o chat
+                    val conversa = Repositorio.abrirConversa(id)
+                    if (conversa != null) {
+                        nav.navigate(Rotas.chat(conversa.id))
+                    }
+                },
+                // TODO: ligar na tela de contratar serviço (tela 7) quando ela ficar pronta
+                onContratar = { }
+            )
+        }
+
+        // Tela 9 - Chat
+        composable(
+            route = Rotas.CHAT,
+            arguments = listOf(navArgument("conversaId") { type = NavType.IntType })
+        ) { entrada ->
+            val conversaId = entrada.arguments?.getInt("conversaId") ?: 0
+            ChatScreen(
+                conversaId = conversaId,
+                onVoltar = { nav.popBackStack() }
             )
         }
     }
