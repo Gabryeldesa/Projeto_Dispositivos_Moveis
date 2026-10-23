@@ -10,11 +10,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.dracma.ui.CadastroClienteScreen
+import com.example.dracma.ui.ChatScreen
+import com.example.dracma.ui.ConversasScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
 import com.example.dracma.ui.ContratarServicoScreen
 import com.example.dracma.ui.DracmaTheme
-import com.example.dracma.ui.HomeProvisoria
+import com.example.dracma.ui.HomeScreen
 import com.example.dracma.ui.LoginScreen
+import com.example.dracma.ui.PerfilPrestadorScreen
 import com.example.dracma.ui.ServicosCategoriaScreen
 import data.Repositorio
 import model.Categoria
@@ -25,9 +28,19 @@ object Rotas {
     const val CADASTRO_CLIENTE = "cadastro_cliente"
     const val CADASTRO_PRESTADOR = "cadastro_prestador"
     const val HOME = "home"
+
+    // O {prestadorId} é um argumento: a rota muda conforme o prestador escolhido
+    const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
+    const val CHAT = "chat/{conversaId}"
+    const val CONVERSAS = "conversas"
+
+    // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
+    fun perfilPrestador(id: Int) = "perfil_prestador/$id"
+    fun chat(conversaId: Int) = "chat/$conversaId"
+
+    // Telas 5 e 7
     const val SERVICOS_CATEGORIA = "servicos_categoria/{categoria}"
     const val CONTRATAR = "contratar/{anuncioId}"
-
     fun servicosCategoria(categoria: Categoria) = "servicos_categoria/${categoria.name}"
     fun contratar(anuncioId: Int) = "contratar/$anuncioId"
 }
@@ -74,12 +87,62 @@ fun DracmaApp() {
             )
         }
 
-        // TODO: trocar HomeProvisoria pela tela Home (feed de anúncios) quando ela for feita
+        // Telas 3 e 4 - Home "Para você" e Todos os serviços (duas abas na mesma tela)
         composable(Rotas.HOME) {
-            HomeProvisoria(
+            HomeScreen(
                 onSair = {
                     nav.navigate(Rotas.LOGIN) { popUpTo(Rotas.HOME) { inclusive = true } }
-                }
+                },
+                // Clicar num anúncio do feed abre o perfil de quem oferece o serviço
+                onAnuncio = { anuncioId ->
+                    val anuncio = Repositorio.buscarAnuncios().firstOrNull { it.id == anuncioId }
+                    if (anuncio != null) {
+                        nav.navigate(Rotas.perfilPrestador(anuncio.prestador.id))
+                    }
+                },
+                onCategoria = { categoria -> nav.navigate(Rotas.servicosCategoria(categoria)) },
+                onChat = { nav.navigate(Rotas.CONVERSAS) }
+            )
+        }
+
+        // Lista de conversas: a porta de entrada do chat
+        composable(Rotas.CONVERSAS) {
+            ConversasScreen(
+                onVoltar = { nav.popBackStack() },
+                onAbrirConversa = { conversaId -> nav.navigate(Rotas.chat(conversaId)) }
+            )
+        }
+
+        // Tela 6 - Perfil do prestador
+        composable(
+            route = Rotas.PERFIL_PRESTADOR,
+            arguments = listOf(navArgument("prestadorId") { type = NavType.IntType })
+        ) { entrada ->
+            // Pega o id que veio dentro da rota
+            val prestadorId = entrada.arguments?.getInt("prestadorId") ?: 0
+            PerfilPrestadorScreen(
+                prestadorId = prestadorId,
+                onVoltar = { nav.popBackStack() },
+                onConversar = { id ->
+                    // Abre (ou reaproveita) a conversa com esse prestador e vai para o chat
+                    val conversa = Repositorio.abrirConversa(id)
+                    if (conversa != null) {
+                        nav.navigate(Rotas.chat(conversa.id))
+                    }
+                },
+                onContratar = { anuncioId -> nav.navigate(Rotas.contratar(anuncioId)) }
+            )
+        }
+
+        // Tela 9 - Chat
+        composable(
+            route = Rotas.CHAT,
+            arguments = listOf(navArgument("conversaId") { type = NavType.IntType })
+        ) { entrada ->
+            val conversaId = entrada.arguments?.getInt("conversaId") ?: 0
+            ChatScreen(
+                conversaId = conversaId,
+                onVoltar = { nav.popBackStack() }
             )
         }
 
@@ -92,7 +155,7 @@ fun DracmaApp() {
             ServicosCategoriaScreen(
                 categoria = categoria,
                 onVoltar = { nav.popBackStack() },
-                onPerfil = { /* TODO: tela 6 - Perfil do prestador */ },
+                onPerfil = { nav.navigate(Rotas.perfilPrestador(it.prestador.id)) },
                 onContratar = { nav.navigate(Rotas.contratar(it.id)) }
             )
         }
