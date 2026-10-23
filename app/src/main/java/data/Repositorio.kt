@@ -361,6 +361,16 @@ object Repositorio {
         }
     }
 
+    // Busca um prestador pelo id (usada na tela de perfil do prestador)
+    fun buscarPrestador(id: Int): Prestador? {
+        return usuarios.filterIsInstance<Prestador>().firstOrNull { it.id == id }
+    }
+
+    // Anúncios ativos de um prestador específico (usada na tela de perfil do prestador)
+    fun anunciosDoPrestador(id: Int): List<Anuncio> {
+        return anuncios.filter { it.prestador.id == id && it.ativo }
+    }
+
     // ---------- Contratar, avaliar e publicar ----------
 
     private fun buscarAnuncioPorId(id: Int): Anuncio? {
