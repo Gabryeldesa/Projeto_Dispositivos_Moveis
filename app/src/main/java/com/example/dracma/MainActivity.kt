@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.dracma.ui.CadastroClienteScreen
+import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
 import com.example.dracma.ui.DracmaTheme
 import com.example.dracma.ui.HomeProvisoria
@@ -26,9 +27,11 @@ object Rotas {
 
     // O {prestadorId} é um argumento: a rota muda conforme o prestador escolhido
     const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
+    const val CHAT = "chat/{conversaId}"
 
-    // Monta a rota já com o id dentro. Use esta função na hora de navegar.
+    // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
     fun perfilPrestador(id: Int) = "perfil_prestador/$id"
+    fun chat(conversaId: Int) = "chat/$conversaId"
 }
 
 class MainActivity : ComponentActivity() {
@@ -94,10 +97,27 @@ fun DracmaApp() {
             PerfilPrestadorScreen(
                 prestadorId = prestadorId,
                 onVoltar = { nav.popBackStack() },
-                // TODO: ligar na tela de chat (tela 9) quando ela ficar pronta
-                onConversar = { },
+                onConversar = { id ->
+                    // Abre (ou reaproveita) a conversa com esse prestador e vai para o chat
+                    val conversa = Repositorio.abrirConversa(id)
+                    if (conversa != null) {
+                        nav.navigate(Rotas.chat(conversa.id))
+                    }
+                },
                 // TODO: ligar na tela de contratar serviço (tela 7) quando ela ficar pronta
                 onContratar = { }
+            )
+        }
+
+        // Tela 9 - Chat
+        composable(
+            route = Rotas.CHAT,
+            arguments = listOf(navArgument("conversaId") { type = NavType.IntType })
+        ) { entrada ->
+            val conversaId = entrada.arguments?.getInt("conversaId") ?: 0
+            ChatScreen(
+                conversaId = conversaId,
+                onVoltar = { nav.popBackStack() }
             )
         }
     }
