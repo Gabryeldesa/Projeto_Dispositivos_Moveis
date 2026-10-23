@@ -34,7 +34,7 @@ fun TelaProvisoria(titulo: String, onVoltar: () -> Unit) {
 }
 
 @Composable
-fun HomeProvisoria(onSair: () -> Unit) {
+fun HomeProvisoria(onSair: () -> Unit, onAbrirPerfil: (Int) -> Unit = {}) {
     val usuario = Repositorio.usuarioLogado
     Column(
         modifier = Modifier
@@ -51,6 +51,17 @@ fun HomeProvisoria(onSair: () -> Unit) {
             color = Color.White,
             fontSize = 16.sp
         )
+
+        // Temporário: abre o perfil do prestador do primeiro anúncio do feed.
+        // Some quando a Home de verdade (com a lista de anúncios) for feita.
+        val primeiro = Repositorio.buscarAnuncios().firstOrNull()
+        if (primeiro != null) {
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = { onAbrirPerfil(primeiro.prestador.id) }) {
+                Text("Ver perfil de ${primeiro.prestador.nome}")
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
         Button(onClick = {
             Repositorio.sair()

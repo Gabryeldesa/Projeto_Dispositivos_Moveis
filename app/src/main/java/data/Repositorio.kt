@@ -5,7 +5,9 @@ import model.Anuncio
 import model.Categoria
 import model.Cliente
 import model.Contratacao
+import model.Conversa
 import model.Endereco
+import model.Mensagem
 import model.Prestador
 import model.Usuario
 import model.criarServico
@@ -21,6 +23,7 @@ object Repositorio {
     private val senhas = mutableMapOf<String, String>() // email -> senha
     private val anuncios = mutableListOf<Anuncio>()
     private val contratacoes = mutableListOf<Contratacao>()
+    private val conversas = mutableListOf<Conversa>()
     private var proximoId = 1
 
     // Arquivo onde os dados são salvos (definido em iniciar)
@@ -53,6 +56,7 @@ object Repositorio {
         senhas.clear()
         anuncios.clear()
         contratacoes.clear()
+        conversas.clear()
         proximoId = 1
     }
 
@@ -151,6 +155,26 @@ object Repositorio {
             }
             raiz.put("contratacoes", arrContratacoes)
 
+            val arrConversas = JSONArray()
+            conversas.forEach { c ->
+                val o = JSONObject()
+                o.put("id", c.id)
+                o.put("clienteId", c.cliente.id)
+                o.put("prestadorId", c.prestador.id)
+                val arrMensagens = JSONArray()
+                c.listaMensagens().forEach { m ->
+                    val om = JSONObject()
+                    om.put("id", m.id)
+                    om.put("autorId", m.autorId)
+                    om.put("texto", m.texto)
+                    om.put("instante", m.instante)
+                    arrMensagens.put(om)
+                }
+                o.put("mensagens", arrMensagens)
+                arrConversas.put(o)
+            }
+            raiz.put("conversas", arrConversas)
+
             // Escreve em um arquivo temporário e troca, para não corromper o arquivo
             val temporario = File(f.parentFile, "dracma.json.tmp")
             temporario.writeText(raiz.toString())
@@ -238,6 +262,34 @@ object Repositorio {
                         o.getDouble("valorPago"), o.getDouble("cashback")
                     )
                 )
+            }
+
+            // optJSONArray devolve null em vez de dar erro.
+            // Arquivos salvos antes do chat existir não têm essa parte, e tudo bem.
+            val arrConversas = raiz.optJSONArray("conversas")
+            if (arrConversas != null) {
+                for (i in 0 until arrConversas.length()) {
+                    val o = arrConversas.getJSONObject(i)
+                    val cliente = usuarios.filterIsInstance<Cliente>()
+                        .first { it.id == o.getInt("clienteId") }
+                    val prestador = usuarios.filterIsInstance<Prestador>()
+                        .first { it.id == o.getInt("prestadorId") }
+                    val conversa = Conversa(o.getInt("id"), cliente, prestador)
+
+                    val arrMensagens = o.getJSONArray("mensagens")
+                    for (j in 0 until arrMensagens.length()) {
+                        val om = arrMensagens.getJSONObject(j)
+                        conversa.adicionar(
+                            Mensagem(
+                                id = om.getInt("id"),
+                                autorId = om.getInt("autorId"),
+                                texto = om.getString("texto"),
+                                instante = om.getLong("instante")
+                            )
+                        )
+                    }
+                    conversas.add(conversa)
+                }
             }
             true
         } catch (e: Exception) {
@@ -361,6 +413,16 @@ object Repositorio {
         }
     }
 
+    // Busca um prestador pelo id (usada na tela de perfil do prestador)
+    fun buscarPrestador(id: Int): Prestador? {
+        return usuarios.filterIsInstance<Prestador>().firstOrNull { it.id == id }
+    }
+
+    // Anúncios ativos de um prestador específico (usada na tela de perfil do prestador)
+    fun anunciosDoPrestador(id: Int): List<Anuncio> {
+        return anuncios.filter { it.prestador.id == id && it.ativo }
+    }
+
     // ---------- Contratar, avaliar e publicar ----------
 
     private fun buscarAnuncioPorId(id: Int): Anuncio? {
@@ -423,6 +485,65 @@ object Repositorio {
     fun meusAnuncios(): List<Anuncio> {
         val logado = usuarioLogado ?: return emptyList()
         return anuncios.filter { it.prestador.id == logado.id }
+    }
+
+    // ---------- Chat ----------
+
+    // Abre a conversa com um prestador. Se ainda não existir, cria na hora.
+    // Devolve null quando quem está logado não pode conversar (ninguém logado
+    // ou o id não é de um prestador).
+    fun abrirConversa(prestadorId: Int): Conversa? {
+        val logado = usuarioLogado
+        if (logado !is Cliente) return null
+
+        val prestador = buscarPrestador(prestadorId) ?: return null
+
+        // firstOrNull procura a conversa já existente desse par cliente/prestador
+        val existente = conversas.firstOrNull {
+            it.cliente.id == logado.id && it.prestador.id == prestador.id
+        }
+        if (existente != null) return existente
+
+        val nova = Conversa(novoId(), logado, prestador)
+        conversas.add(nova)
+        salvar()
+        return nova
+    }
+
+    fun buscarConversa(conversaId: Int): Conversa? {
+        return conversas.firstOrNull { it.id == conversaId }
+    }
+
+    // Devolve a mensagem de erro, ou null quando a mensagem foi enviada
+    fun enviarMensagem(conversaId: Int, texto: String): String? {
+        val logado = usuarioLogado ?: return "Faça login para conversar"
+        val conversa = buscarConversa(conversaId) ?: return "Conversa não encontrada"
+        if (texto.isBlank()) return "Digite uma mensagem"
+
+        // Só quem participa da conversa pode escrever nela
+        if (logado.id != conversa.cliente.id && logado.id != conversa.prestador.id) {
+            return "Você não participa desta conversa"
+        }
+
+        conversa.adicionar(
+            Mensagem(
+                id = novoId(),
+                autorId = logado.id,
+                texto = texto.trim(),
+                instante = System.currentTimeMillis()
+            )
+        )
+        salvar()
+        return null
+    }
+
+    // Conversas de quem está logado, da mais recente para a mais antiga.
+    // Serve tanto para cliente quanto para prestador.
+    fun minhasConversas(): List<Conversa> {
+        val logado = usuarioLogado ?: return emptyList()
+        return conversas
+            .filter { it.cliente.id == logado.id || it.prestador.id == logado.id }
+            .sortedByDescending { it.ultimaMensagem()?.instante ?: 0L }
     }
 
     // ---------- Dados iniciais (só na primeira vez; senha de todos: 1234) ----------
