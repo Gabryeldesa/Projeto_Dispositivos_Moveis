@@ -56,7 +56,8 @@ fun HomeScreen(
     onSair: () -> Unit,
     onAnuncio: (Int) -> Unit,
     onCategoria: (Categoria) -> Unit,
-    onChat: () -> Unit
+    onChat: () -> Unit,
+    onMeusPedidos: () -> Unit = {}
 ) {
     var aba by remember { mutableStateOf(0) }
     var busca by remember { mutableStateOf("") }
@@ -71,7 +72,7 @@ fun HomeScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        BarraTopo(saldo = saldo, onSair = onSair, onChat = onChat)
+        BarraTopo(saldo = saldo, onSair = onSair, onChat = onChat, onMeusPedidos = onMeusPedidos)
         Box(
             Modifier
                 .fillMaxWidth()
@@ -125,7 +126,12 @@ fun HomeScreen(
 }
 
 @Composable
-private fun BarraTopo(saldo: Double, onSair: () -> Unit, onChat: () -> Unit) {
+private fun BarraTopo(
+    saldo: Double,
+    onSair: () -> Unit,
+    onChat: () -> Unit,
+    onMeusPedidos: () -> Unit
+) {
     val context = LocalContext.current
     var menuAberto by remember { mutableStateOf(false) }
 
@@ -157,6 +163,13 @@ private fun BarraTopo(saldo: Double, onSair: () -> Unit, onChat: () -> Unit) {
         Box {
             IconeTopo(Icons.Outlined.AccountCircle, "Perfil") { menuAberto = true }
             DropdownMenu(expanded = menuAberto, onDismissRequest = { menuAberto = false }) {
+                DropdownMenuItem(
+                    text = { Text("Meus pedidos") },
+                    onClick = {
+                        menuAberto = false
+                        onMeusPedidos()
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text("Sair") },
                     onClick = {
