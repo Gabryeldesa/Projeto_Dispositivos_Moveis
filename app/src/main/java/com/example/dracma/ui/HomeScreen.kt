@@ -55,7 +55,8 @@ import model.Cliente
 fun HomeScreen(
     onSair: () -> Unit,
     onAnuncio: (Int) -> Unit,
-    onCategoria: (Categoria) -> Unit
+    onCategoria: (Categoria) -> Unit,
+    onChat: () -> Unit
 ) {
     var aba by remember { mutableStateOf(0) }
     var busca by remember { mutableStateOf("") }
@@ -70,7 +71,7 @@ fun HomeScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        BarraTopo(saldo = saldo, onSair = onSair)
+        BarraTopo(saldo = saldo, onSair = onSair, onChat = onChat)
         Box(
             Modifier
                 .fillMaxWidth()
@@ -124,7 +125,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun BarraTopo(saldo: Double, onSair: () -> Unit) {
+private fun BarraTopo(saldo: Double, onSair: () -> Unit, onChat: () -> Unit) {
     val context = LocalContext.current
     var menuAberto by remember { mutableStateOf(false) }
 
@@ -149,9 +150,7 @@ private fun BarraTopo(saldo: Double, onSair: () -> Unit) {
 
         Spacer(Modifier.weight(1f))
 
-        IconeTopo(Icons.Outlined.ChatBubbleOutline, "Chat") {
-            Toast.makeText(context, "Chat em breve", Toast.LENGTH_SHORT).show()
-        }
+        IconeTopo(Icons.Outlined.ChatBubbleOutline, "Chat", onChat)
         IconeTopo(Icons.Outlined.Settings, "Configurações") {
             Toast.makeText(context, "Configurações em breve", Toast.LENGTH_SHORT).show()
         }

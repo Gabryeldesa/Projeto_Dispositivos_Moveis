@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.ChatScreen
+import com.example.dracma.ui.ConversasScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
 import com.example.dracma.ui.DracmaTheme
 import com.example.dracma.ui.HomeScreen
@@ -28,6 +29,7 @@ object Rotas {
     // O {prestadorId} é um argumento: a rota muda conforme o prestador escolhido
     const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
     const val CHAT = "chat/{conversaId}"
+    const val CONVERSAS = "conversas"
 
     // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
     fun perfilPrestador(id: Int) = "perfil_prestador/$id"
@@ -90,7 +92,16 @@ fun DracmaApp() {
                     }
                 },
                 // TODO: ligar na tela 5 (Serviços da categoria) quando ela ficar pronta
-                onCategoria = { }
+                onCategoria = { },
+                onChat = { nav.navigate(Rotas.CONVERSAS) }
+            )
+        }
+
+        // Lista de conversas: a porta de entrada do chat
+        composable(Rotas.CONVERSAS) {
+            ConversasScreen(
+                onVoltar = { nav.popBackStack() },
+                onAbrirConversa = { conversaId -> nav.navigate(Rotas.chat(conversaId)) }
             )
         }
 
