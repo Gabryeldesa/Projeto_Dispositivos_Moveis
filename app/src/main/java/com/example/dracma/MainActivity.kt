@@ -4,15 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
+import com.example.dracma.ui.ContratarServicoScreen
 import com.example.dracma.ui.DracmaTheme
 import com.example.dracma.ui.HomeProvisoria
 import com.example.dracma.ui.LoginScreen
+import com.example.dracma.ui.ServicosCategoriaScreen
 import data.Repositorio
+import model.Categoria
 
 // Nomes das rotas em um só lugar (evita erro de digitação nas strings)
 object Rotas {
@@ -20,6 +25,11 @@ object Rotas {
     const val CADASTRO_CLIENTE = "cadastro_cliente"
     const val CADASTRO_PRESTADOR = "cadastro_prestador"
     const val HOME = "home"
+    const val SERVICOS_CATEGORIA = "servicos_categoria/{categoria}"
+    const val CONTRATAR = "contratar/{anuncioId}"
+
+    fun servicosCategoria(categoria: Categoria) = "servicos_categoria/${categoria.name}"
+    fun contratar(anuncioId: Int) = "contratar/$anuncioId"
 }
 
 class MainActivity : ComponentActivity() {
@@ -71,6 +81,38 @@ fun DracmaApp() {
                     nav.navigate(Rotas.LOGIN) { popUpTo(Rotas.HOME) { inclusive = true } }
                 }
             )
+        }
+
+        // Tela 5 - Serviços da categoria
+        composable(
+            Rotas.SERVICOS_CATEGORIA,
+            arguments = listOf(navArgument("categoria") { type = NavType.StringType })
+        ) { entry ->
+            val categoria = Categoria.valueOf(entry.arguments?.getString("categoria") ?: "OUTROS")
+            ServicosCategoriaScreen(
+                categoria = categoria,
+                onVoltar = { nav.popBackStack() },
+                onPerfil = { /* TODO: tela 6 - Perfil do prestador */ },
+                onContratar = { nav.navigate(Rotas.contratar(it.id)) }
+            )
+        }
+
+        // Tela 7 - Contratar serviço
+        composable(
+            Rotas.CONTRATAR,
+            arguments = listOf(navArgument("anuncioId") { type = NavType.IntType })
+        ) { entry ->
+            val anuncio = Repositorio.buscarAnuncios().firstOrNull {
+                it.id == entry.arguments?.getInt("anuncioId")
+            }
+            if (anuncio != null) {
+                ContratarServicoScreen(
+                    anuncio = anuncio,
+                    onVoltar = { nav.popBackStack() },
+                    // TODO: tela 8 - ir para "Meus pedidos" em vez de voltar
+                    onContratado = { nav.popBackStack() }
+                )
+            }
         }
     }
 }
