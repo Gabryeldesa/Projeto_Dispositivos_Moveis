@@ -9,6 +9,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.example.dracma.ui.AvaliarPrestadorScreen
+import com.example.dracma.ui.MeusPedidosScreen
 import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.ConversasScreen
@@ -30,10 +34,13 @@ object Rotas {
     const val PERFIL_PRESTADOR = "perfil_prestador/{prestadorId}"
     const val CHAT = "chat/{conversaId}"
     const val CONVERSAS = "conversas"
+    const val MEUS_PEDIDOS = "meus_pedidos"
+    const val AVALIAR_PRESTADOR = "avaliar_prestador/{anuncioId}"
 
     // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
     fun perfilPrestador(id: Int) = "perfil_prestador/$id"
     fun chat(conversaId: Int) = "chat/$conversaId"
+    fun avaliarPrestador(anuncioId: Int) = "avaliar_prestador/$anuncioId"
 }
 
 class MainActivity : ComponentActivity() {
@@ -54,6 +61,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DracmaApp() {
     val nav = rememberNavController()
+    val context = LocalContext.current
 
     NavHost(navController = nav, startDestination = Rotas.LOGIN) {
         composable(Rotas.LOGIN) {
@@ -93,7 +101,8 @@ fun DracmaApp() {
                 },
                 // TODO: ligar na tela 5 (Serviços da categoria) quando ela ficar pronta
                 onCategoria = { },
-                onChat = { nav.navigate(Rotas.CONVERSAS) }
+                onChat = { nav.navigate(Rotas.CONVERSAS) },
+                onMeusPedidos = { nav.navigate(Rotas.MEUS_PEDIDOS) }
             )
         }
 
@@ -122,8 +131,12 @@ fun DracmaApp() {
                         nav.navigate(Rotas.chat(conversa.id))
                     }
                 },
-                // TODO: ligar na tela de contratar serviço (tela 7) quando ela ficar pronta
-                onContratar = { }
+                // TEMPORÁRIO: contrata direto até a tela de contratar serviço (tela 7) ficar pronta.
+                // Serve para o pedido aparecer em "Meus pedidos". Troque pela tela 7 depois.
+                onContratar = { anuncioId ->
+                    val erro = Repositorio.contratar(anuncioId)
+                    Toast.makeText(context, erro ?: "Serviço contratado!", Toast.LENGTH_SHORT).show()
+                }
             )
         }
 
@@ -136,6 +149,27 @@ fun DracmaApp() {
             ChatScreen(
                 conversaId = conversaId,
                 onVoltar = { nav.popBackStack() }
+            )
+        }
+
+        // Meus pedidos: serviços que o cliente contratou
+        composable(Rotas.MEUS_PEDIDOS) {
+            MeusPedidosScreen(
+                onVoltar = { nav.popBackStack() },
+                onAvaliar = { anuncioId -> nav.navigate(Rotas.avaliarPrestador(anuncioId)) }
+            )
+        }
+
+        // Avaliar prestador: recebe o id do anúncio contratado
+        composable(
+            route = Rotas.AVALIAR_PRESTADOR,
+            arguments = listOf(navArgument("anuncioId") { type = NavType.IntType })
+        ) { entrada ->
+            val anuncioId = entrada.arguments?.getInt("anuncioId") ?: 0
+            AvaliarPrestadorScreen(
+                anuncioId = anuncioId,
+                onVoltar = { nav.popBackStack() },
+                onConcluido = { nav.popBackStack() }
             )
         }
     }
