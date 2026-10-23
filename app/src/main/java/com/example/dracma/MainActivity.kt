@@ -9,19 +9,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 import com.example.dracma.ui.AvaliarPrestadorScreen
 import com.example.dracma.ui.MeusPedidosScreen
 import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.ConversasScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
+import com.example.dracma.ui.ContratarServicoScreen
 import com.example.dracma.ui.DracmaTheme
 import com.example.dracma.ui.HomeScreen
 import com.example.dracma.ui.LoginScreen
 import com.example.dracma.ui.PerfilPrestadorScreen
+import com.example.dracma.ui.ServicosCategoriaScreen
 import data.Repositorio
+import model.Categoria
 
 // Nomes das rotas em um só lugar (evita erro de digitação nas strings)
 object Rotas {
@@ -37,10 +38,16 @@ object Rotas {
     const val MEUS_PEDIDOS = "meus_pedidos"
     const val AVALIAR_PRESTADOR = "avaliar_prestador/{anuncioId}"
 
+    // Telas 5 e 7
+    const val SERVICOS_CATEGORIA = "servicos_categoria/{categoria}"
+    const val CONTRATAR = "contratar/{anuncioId}"
+
     // Montam a rota já com o id dentro. Use estas funções na hora de navegar.
     fun perfilPrestador(id: Int) = "perfil_prestador/$id"
     fun chat(conversaId: Int) = "chat/$conversaId"
     fun avaliarPrestador(anuncioId: Int) = "avaliar_prestador/$anuncioId"
+    fun servicosCategoria(categoria: Categoria) = "servicos_categoria/${categoria.name}"
+    fun contratar(anuncioId: Int) = "contratar/$anuncioId"
 }
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +68,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DracmaApp() {
     val nav = rememberNavController()
-    val context = LocalContext.current
 
     NavHost(navController = nav, startDestination = Rotas.LOGIN) {
         composable(Rotas.LOGIN) {
@@ -99,8 +105,7 @@ fun DracmaApp() {
                         nav.navigate(Rotas.perfilPrestador(anuncio.prestador.id))
                     }
                 },
-                // TODO: ligar na tela 5 (Serviços da categoria) quando ela ficar pronta
-                onCategoria = { },
+                onCategoria = { categoria -> nav.navigate(Rotas.servicosCategoria(categoria)) },
                 onChat = { nav.navigate(Rotas.CONVERSAS) },
                 onMeusPedidos = { nav.navigate(Rotas.MEUS_PEDIDOS) }
             )
@@ -131,12 +136,8 @@ fun DracmaApp() {
                         nav.navigate(Rotas.chat(conversa.id))
                     }
                 },
-                // TEMPORÁRIO: contrata direto até a tela de contratar serviço (tela 7) ficar pronta.
-                // Serve para o pedido aparecer em "Meus pedidos". Troque pela tela 7 depois.
-                onContratar = { anuncioId ->
-                    val erro = Repositorio.contratar(anuncioId)
-                    Toast.makeText(context, erro ?: "Serviço contratado!", Toast.LENGTH_SHORT).show()
-                }
+                // Agora usa a tela 7 de verdade (substitui o "contratar direto" temporário)
+                onContratar = { anuncioId -> nav.navigate(Rotas.contratar(anuncioId)) }
             )
         }
 
@@ -150,6 +151,42 @@ fun DracmaApp() {
                 conversaId = conversaId,
                 onVoltar = { nav.popBackStack() }
             )
+        }
+
+        // Tela 5 - Serviços da categoria
+        composable(
+            Rotas.SERVICOS_CATEGORIA,
+            arguments = listOf(navArgument("categoria") { type = NavType.StringType })
+        ) { entry ->
+            val categoria = Categoria.valueOf(entry.arguments?.getString("categoria") ?: "OUTROS")
+            ServicosCategoriaScreen(
+                categoria = categoria,
+                onVoltar = { nav.popBackStack() },
+                onPerfil = { nav.navigate(Rotas.perfilPrestador(it.prestador.id)) },
+                onContratar = { nav.navigate(Rotas.contratar(it.id)) }
+            )
+        }
+
+        // Tela 7 - Contratar serviço
+        composable(
+            Rotas.CONTRATAR,
+            arguments = listOf(navArgument("anuncioId") { type = NavType.IntType })
+        ) { entry ->
+            val anuncio = Repositorio.buscarAnuncios().firstOrNull {
+                it.id == entry.arguments?.getInt("anuncioId")
+            }
+            if (anuncio != null) {
+                ContratarServicoScreen(
+                    anuncio = anuncio,
+                    onVoltar = { nav.popBackStack() },
+                    // Depois de contratar, vai para "Meus pedidos" (a tela 8 já existe na main)
+                    onContratado = {
+                        nav.navigate(Rotas.MEUS_PEDIDOS) {
+                            popUpTo(Rotas.CONTRATAR) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
 
         // Meus pedidos: serviços que o cliente contratou
