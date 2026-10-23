@@ -13,7 +13,7 @@ import com.example.dracma.ui.CadastroClienteScreen
 import com.example.dracma.ui.ChatScreen
 import com.example.dracma.ui.CadastroPrestadorScreen
 import com.example.dracma.ui.DracmaTheme
-import com.example.dracma.ui.HomeProvisoria
+import com.example.dracma.ui.HomeScreen
 import com.example.dracma.ui.LoginScreen
 import com.example.dracma.ui.PerfilPrestadorScreen
 import data.Repositorio
@@ -76,14 +76,21 @@ fun DracmaApp() {
             )
         }
 
-        // TODO: trocar HomeProvisoria pela tela Home (feed de anúncios) quando ela for feita
+        // Telas 3 e 4 - Home "Para você" e Todos os serviços (duas abas na mesma tela)
         composable(Rotas.HOME) {
-            HomeProvisoria(
+            HomeScreen(
                 onSair = {
                     nav.navigate(Rotas.LOGIN) { popUpTo(Rotas.HOME) { inclusive = true } }
                 },
-                // Temporário: atalho para testar a tela de perfil enquanto a Home não existe
-                onAbrirPerfil = { id -> nav.navigate(Rotas.perfilPrestador(id)) }
+                // Clicar num anúncio do feed abre o perfil de quem oferece o serviço
+                onAnuncio = { anuncioId ->
+                    val anuncio = Repositorio.buscarAnuncios().firstOrNull { it.id == anuncioId }
+                    if (anuncio != null) {
+                        nav.navigate(Rotas.perfilPrestador(anuncio.prestador.id))
+                    }
+                },
+                // TODO: ligar na tela 5 (Serviços da categoria) quando ela ficar pronta
+                onCategoria = { }
             )
         }
 
